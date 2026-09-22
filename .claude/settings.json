@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/alexv/Sites/rolodex/.claude/hooks/post-response.sh",
+            "timeout": 1800,
+            "async": true,
+            "statusMessage": "Running tests + dev build, committing/pushing if they pass..."
+          }
+        ]
+      }
+    ]
+  }
+}

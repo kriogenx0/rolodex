@@ -1,0 +1,17 @@
+# Xcode / macOS build artifacts
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Local Rolodex app data written by AppDataStore
+*.rolodex-data.json
+
+# Claude Code hook logs (local only)
+.claude/hooks/*.log

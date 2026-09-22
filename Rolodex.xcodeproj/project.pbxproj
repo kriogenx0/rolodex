@@ -1,0 +1,361 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		7AA7827079E96EE9DB8D943D /* RolodexApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0688172A94A75E2BE64B47 /* RolodexApp.swift */; };
+		672668A1D75D09A078597962 /* SmartGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8762F625963AE2A5A9F558DA /* SmartGroup.swift */; };
+		CD52537B18AA4575E45D071A /* AppDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0D8F1747139FDBD8CB03161 /* AppDataStore.swift */; };
+		35060AD1233ACD96D75AB9D9 /* ContactsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5248263F5802C78AC90B457 /* ContactsService.swift */; };
+		543615D0071FBA5617EE0EA6 /* CNContact+Rolodex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B55B1F1455E3C834E8BBFD69 /* CNContact+Rolodex.swift */; };
+		7A7424B452349DD29195E94E /* ContactsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CB8AAC11185AB4BA0BC578 /* ContactsViewModel.swift */; };
+		DC4CE3615E912A94532A968C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48A612B8D822A41DCAA070B /* ContentView.swift */; };
+		0A1D7C55BF5A614FA36A4225 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C056EA3E47C2DFCDD368FAD /* SidebarView.swift */; };
+		ABBDCECB499D9C978F809D09 /* ContactListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058A41D8CBE321D58758E0E1 /* ContactListView.swift */; };
+		F997984A6B12129F476E7E6C /* ContactRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3D9DC0871A317088B79BB7 /* ContactRowView.swift */; };
+		AC6A9B84B49CB114DAD350E8 /* ContactDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF3A9F8F88F7D01D9CAC67C /* ContactDetailView.swift */; };
+		877E69DB665240850FDFDFE9 /* GroupEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65A827273DB9C76EA0473E93 /* GroupEditorSheet.swift */; };
+		27B71B54685B33C85826A0EE /* SmartGroupEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFD3F9947F7695A53DFD6 /* SmartGroupEditorView.swift */; };
+		0FF17D750720F07B938897EB /* BulkGroupAssignMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D3C7446567B15586263E064 /* BulkGroupAssignMenu.swift */; };
+		FDC00D67C127D9571B95D84B /* GroupInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C494453C0ADDC9EAA74E4C /* GroupInsightsView.swift */; };
+		4FC938360D9ACD997DEF5E8B /* PermissionStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC8C3F09F3E6278BF50C26F /* PermissionStateViews.swift */; };
+		A7C339B7464A6BBCAC1125AC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8F86ADED6C00D1CD9A9A59B9 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5C0688172A94A75E2BE64B47 /* RolodexApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RolodexApp.swift; sourceTree = "<group>"; };
+		8762F625963AE2A5A9F558DA /* SmartGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartGroup.swift; sourceTree = "<group>"; };
+		E0D8F1747139FDBD8CB03161 /* AppDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataStore.swift; sourceTree = "<group>"; };
+		D5248263F5802C78AC90B457 /* ContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsService.swift; sourceTree = "<group>"; };
+		B55B1F1455E3C834E8BBFD69 /* CNContact+Rolodex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CNContact+Rolodex.swift"; sourceTree = "<group>"; };
+		77CB8AAC11185AB4BA0BC578 /* ContactsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsViewModel.swift; sourceTree = "<group>"; };
+		F48A612B8D822A41DCAA070B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		7C056EA3E47C2DFCDD368FAD /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		058A41D8CBE321D58758E0E1 /* ContactListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactListView.swift; sourceTree = "<group>"; };
+		FF3D9DC0871A317088B79BB7 /* ContactRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactRowView.swift; sourceTree = "<group>"; };
+		EDF3A9F8F88F7D01D9CAC67C /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
+		65A827273DB9C76EA0473E93 /* GroupEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupEditorSheet.swift; sourceTree = "<group>"; };
+		A31CFD3F9947F7695A53DFD6 /* SmartGroupEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartGroupEditorView.swift; sourceTree = "<group>"; };
+		5D3C7446567B15586263E064 /* BulkGroupAssignMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkGroupAssignMenu.swift; sourceTree = "<group>"; };
+		B2C494453C0ADDC9EAA74E4C /* GroupInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupInsightsView.swift; sourceTree = "<group>"; };
+		9EC8C3F09F3E6278BF50C26F /* PermissionStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionStateViews.swift; sourceTree = "<group>"; };
+		8F86ADED6C00D1CD9A9A59B9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5DD227B8A942B0A5BA5EE46A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		535A6AF56AAF68D5C99DAB6A /* Rolodex.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Rolodex.entitlements; sourceTree = "<group>"; };
+		2699D7F0D0D016BD50A51BBC /* Rolodex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rolodex.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7C61F07D8BFEEE94839B1EF2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A5E45A5D7AC6783ACE774B94 = {
+			isa = PBXGroup;
+			children = (
+				D991E770A3B7AF64630A19E1 /* Rolodex */,
+				0E6286DD0BCC7E97BD6D8C46 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0E6286DD0BCC7E97BD6D8C46 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2699D7F0D0D016BD50A51BBC /* Rolodex.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D991E770A3B7AF64630A19E1 /* Rolodex */ = {
+			isa = PBXGroup;
+			children = (
+				5C0688172A94A75E2BE64B47 /* RolodexApp.swift */,
+				5DD227B8A942B0A5BA5EE46A /* Info.plist */,
+				535A6AF56AAF68D5C99DAB6A /* Rolodex.entitlements */,
+				8F86ADED6C00D1CD9A9A59B9 /* Assets.xcassets */,
+				044A751AC2EB59455AE2C335 /* Models */,
+				0CB47B337154656292EC5A01 /* Persistence */,
+				16EE448BB973293A6F8465D0 /* Services */,
+				60D910BB80CB4C048BA7A58B /* Extensions */,
+				7BC78EC48FE0FFA6C717B94C /* ViewModels */,
+				356D060492DC85893E0E66C9 /* Views */,
+			);
+			path = Rolodex;
+			sourceTree = "<group>";
+		};
+		044A751AC2EB59455AE2C335 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				8762F625963AE2A5A9F558DA /* SmartGroup.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		0CB47B337154656292EC5A01 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				E0D8F1747139FDBD8CB03161 /* AppDataStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		16EE448BB973293A6F8465D0 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				D5248263F5802C78AC90B457 /* ContactsService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		60D910BB80CB4C048BA7A58B /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				B55B1F1455E3C834E8BBFD69 /* CNContact+Rolodex.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		7BC78EC48FE0FFA6C717B94C /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				77CB8AAC11185AB4BA0BC578 /* ContactsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		356D060492DC85893E0E66C9 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F48A612B8D822A41DCAA070B /* ContentView.swift */,
+				7C056EA3E47C2DFCDD368FAD /* SidebarView.swift */,
+				058A41D8CBE321D58758E0E1 /* ContactListView.swift */,
+				FF3D9DC0871A317088B79BB7 /* ContactRowView.swift */,
+				EDF3A9F8F88F7D01D9CAC67C /* ContactDetailView.swift */,
+				65A827273DB9C76EA0473E93 /* GroupEditorSheet.swift */,
+				A31CFD3F9947F7695A53DFD6 /* SmartGroupEditorView.swift */,
+				5D3C7446567B15586263E064 /* BulkGroupAssignMenu.swift */,
+				B2C494453C0ADDC9EAA74E4C /* GroupInsightsView.swift */,
+				9EC8C3F09F3E6278BF50C26F /* PermissionStateViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9DC915F66328926596B26B53 /* Rolodex */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBD9577E11CB6ADF92891594 /* Build configuration list for PBXNativeTarget "Rolodex" */;
+			buildPhases = (
+				F816407C18C4074B5C87010C /* Sources */,
+				C1EBFDB7DCA16DAA4A10A0F3 /* Resources */,
+				7C61F07D8BFEEE94839B1EF2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Rolodex;
+			productName = Rolodex;
+			productReference = 2699D7F0D0D016BD50A51BBC /* Rolodex.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5BC9BEF37BA8392FDC71FE6E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					9DC915F66328926596B26B53 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 7C95CDC81DC35D281EB33EF6 /* Build configuration list for PBXProject "Rolodex" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A5E45A5D7AC6783ACE774B94;
+			productRefGroup = 0E6286DD0BCC7E97BD6D8C46 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9DC915F66328926596B26B53 /* Rolodex */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C1EBFDB7DCA16DAA4A10A0F3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7C339B7464A6BBCAC1125AC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F816407C18C4074B5C87010C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AA7827079E96EE9DB8D943D /* RolodexApp.swift in Sources */,
+				672668A1D75D09A078597962 /* SmartGroup.swift in Sources */,
+				CD52537B18AA4575E45D071A /* AppDataStore.swift in Sources */,
+				35060AD1233ACD96D75AB9D9 /* ContactsService.swift in Sources */,
+				543615D0071FBA5617EE0EA6 /* CNContact+Rolodex.swift in Sources */,
+				7A7424B452349DD29195E94E /* ContactsViewModel.swift in Sources */,
+				DC4CE3615E912A94532A968C /* ContentView.swift in Sources */,
+				0A1D7C55BF5A614FA36A4225 /* SidebarView.swift in Sources */,
+				ABBDCECB499D9C978F809D09 /* ContactListView.swift in Sources */,
+				F997984A6B12129F476E7E6C /* ContactRowView.swift in Sources */,
+				AC6A9B84B49CB114DAD350E8 /* ContactDetailView.swift in Sources */,
+				877E69DB665240850FDFDFE9 /* GroupEditorSheet.swift in Sources */,
+				27B71B54685B33C85826A0EE /* SmartGroupEditorView.swift in Sources */,
+				0FF17D750720F07B938897EB /* BulkGroupAssignMenu.swift in Sources */,
+				FDC00D67C127D9571B95D84B /* GroupInsightsView.swift in Sources */,
+				4FC938360D9ACD997DEF5E8B /* PermissionStateViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		6FA797A1D8160623ACCDF104 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BFAF034987CB5C613E04EC1B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		11ABAF4D37DEB017641CB023 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Rolodex/Rolodex.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Rolodex/Preview Content\"";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Rolodex/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rolodex.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5D15D784D7152BE5E737A2BB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Rolodex/Rolodex.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Rolodex/Preview Content\"";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Rolodex/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rolodex.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7C95CDC81DC35D281EB33EF6 /* Build configuration list for PBXProject "Rolodex" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6FA797A1D8160623ACCDF104 /* Debug */,
+				BFAF034987CB5C613E04EC1B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FBD9577E11CB6ADF92891594 /* Build configuration list for PBXNativeTarget "Rolodex" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11ABAF4D37DEB017641CB023 /* Debug */,
+				5D15D784D7152BE5E737A2BB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5BC9BEF37BA8392FDC71FE6E /* Project object */;
+}
