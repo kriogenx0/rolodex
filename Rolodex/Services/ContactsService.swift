@@ -21,8 +21,10 @@ final class ContactsService {
     ]
 
     func requestAccess() async -> Bool {
-        switch CNContactStore.authorizationStatus(for: .contacts) {
-        case .authorized:
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        print("Rolodex: Contacts TCC status at startup = \(status)")
+        switch status {
+        case .authorized, .limited:
             return true
         case .notDetermined:
             return await withCheckedContinuation { continuation in

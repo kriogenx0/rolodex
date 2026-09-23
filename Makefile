@@ -20,10 +20,10 @@ help:
 	@echo "Rolodex"
 	@echo ""
 	@echo "Everyday development:"
-	@echo "  make dev        Build for development and open it (close, clean, build, open)"
+	@echo "  make dev        Build for development and open it (clean, build, open)"
 	@echo "  make open       Open the already-built dev app"
 	@echo "  make close      Kill the running app (native app only)"
-	@echo "  make clean      Remove build artifacts"
+	@echo "  make clean      Kill the running app and remove build artifacts"
 	@echo "  make test       Run unit tests"
 	@echo ""
 	@echo "Production / distribution:"
@@ -48,10 +48,19 @@ setup:
 	@echo "Environment OK."
 
 ## Build for development and open it.
-dev: close clean
+dev: clean
 	@echo "Building $(APP_NAME) ($(DEV_CONFIGURATION))..."
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(DEV_CONFIGURATION) \
-		-derivedDataPath $(DERIVED_DATA) build
+	@n=1; \
+	until xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(DEV_CONFIGURATION) \
+		-derivedDataPath $(DERIVED_DATA) build; do \
+		if [ $$n -ge 4 ]; then \
+			echo "Build failed after $$n attempts."; \
+			exit 1; \
+		fi; \
+		echo "Build failed (attempt $$n), retrying (Swift macro plugin server is occasionally flaky)..."; \
+		n=$$((n + 1)); \
+		sleep 5; \
+	done
 	@$(MAKE) --no-print-directory open
 
 ## Build for production.
@@ -60,8 +69,9 @@ build:
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(RELEASE_CONFIGURATION) \
 		-derivedDataPath $(DERIVED_DATA) build
 
-## Clean existing builds.
+## Kill the app and remove build artifacts.
 clean:
+	@pkill -x "$(APP_NAME)" >/dev/null 2>&1 || true
 	@rm -rf "$(DERIVED_DATA)"
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) clean >/dev/null 2>&1 || true
 	@echo "Cleaned."
