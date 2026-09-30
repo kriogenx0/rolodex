@@ -10,32 +10,22 @@ struct ContactDetailView: View {
     @State private var familyName = ""
     @State private var organizationName = ""
     @State private var jobTitle = ""
-    @State private var isEditing = false
     @State private var vCardURL: URL?
 
     var body: some View {
-        Form {
+        VStack(spacing: 0) {
+            header
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            Form {
             Section("Name") {
-                if isEditing {
+                HStack {
                     TextField("First Name", text: $givenName)
                     TextField("Last Name", text: $familyName)
-                    TextField("Company", text: $organizationName)
-                    TextField("Job Title", text: $jobTitle)
-                } else {
-                    HStack {
-                        LabeledContent("Name", value: contact.displayName)
-                        if contact.isCompany {
-                            Image(systemName: "building.2.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    if !contact.organizationName.isEmpty {
-                        LabeledContent("Company", value: contact.organizationName)
-                    }
-                    if !contact.jobTitle.isEmpty {
-                        LabeledContent("Job Title", value: contact.jobTitle)
-                    }
                 }
+                TextField("Company", text: $organizationName)
+                TextField("Job Title", text: $jobTitle)
             }
 
             Section("Phone") {
@@ -58,59 +48,44 @@ struct ContactDetailView: View {
 
             Section("Groups") {
                 let memberGroups = viewModel.groups.filter { viewModel.membership[contact.identifier]?.contains($0.identifier) == true }
-                if memberGroups.isEmpty {
-                    Text("Not in any group").foregroundStyle(.secondary)
-                }
-                ForEach(memberGroups, id: \.identifier) { group in
-                    HStack {
-                        Label(group.name, systemImage: "folder.fill")
-                        Spacer()
-                        Button(role: .destructive) {
-                            viewModel.setMembership(false, contactIDs: [contact.identifier], group: group)
-                        } label: {
-                            Image(systemName: "minus.circle")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
                 let remainingGroups = viewModel.groups.filter { !(viewModel.membership[contact.identifier]?.contains($0.identifier) ?? false) }
-                if !remainingGroups.isEmpty {
-                    Menu("Add to Group…") {
-                        ForEach(remainingGroups, id: \.identifier) { group in
-                            Button(group.name) {
-                                viewModel.setMembership(true, contactIDs: [contact.identifier], group: group)
-                            }
+                if memberGroups.isEmpty && remainingGroups.isEmpty {
+                    Text("No groups available").foregroundStyle(.secondary)
+                } else {
+                    FlowLayout(spacing: 6) {
+                        ForEach(memberGroups, id: \.identifier) { group in
+                            groupTag(group)
+                        }
+                        if !remainingGroups.isEmpty {
+                            addGroupTag(remainingGroups)
                         }
                     }
                 }
             }
+            }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
         .navigationTitle(contact.displayName)
         .toolbar {
-            ToolbarItemGroup {
-                if isEditing {
-                    Button("Cancel") { isEditing = false; loadFields() }
-                    Button("Save") { save() }
-                } else {
-                    Button("Edit") { isEditing = true }
-                    if let vCardURL {
-                        ShareLink(item: vCardURL) {
-                            Label("Share Contact", systemImage: "square.and.arrow.up")
-                        }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Save") { save() }
+                    .disabled(!isDirty)
+                if let vCardURL {
+                    ShareLink(item: vCardURL) {
+                        Label("Share Contact", systemImage: "square.and.arrow.up")
                     }
-                    Menu {
-                        Button(viewModel.isContactBlocked(contact.identifier) ? "Unblock Contact" : "Block Contact", role: viewModel.isContactBlocked(contact.identifier) ? nil : .destructive) {
-                            viewModel.toggleBlocked(contact.identifier)
-                        }
-                        Divider()
-                        Button("Delete Contact", role: .destructive) {
-                            viewModel.selectedContactIDs = [contact.identifier]
-                            viewModel.deleteSelectedContacts()
-                        }
-                    } label: {
-                        Label("More", systemImage: "ellipsis.circle")
+                }
+                Menu {
+                    Button(viewModel.isContactBlocked(contact.identifier) ? "Unblock Contact" : "Block Contact", role: viewModel.isContactBlocked(contact.identifier) ? nil : .destructive) {
+                        viewModel.toggleBlocked(contact.identifier)
                     }
+                    Divider()
+                    Button("Delete Contact", role: .destructive) {
+                        viewModel.selectedContactIDs = [contact.identifier]
+                        viewModel.deleteSelectedContacts()
+                    }
+                } label: {
+                    Label("More", systemImage: "ellipsis.circle")
                 }
             }
         }
@@ -122,6 +97,76 @@ struct ContactDetailView: View {
             loadFields()
             vCardURL = makeVCardURL()
         }
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        ZStack {
+            headerBackground
+            ContactAvatarView(contact: contact, size: 96)
+                .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                .shadow(radius: 6)
+        }
+        .frame(height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var headerBackground: some View {
+        if contact.imageDataAvailable,
+           let data = contact.imageData ?? contact.thumbnailImageData,
+           let nsImage = NSImage(data: data) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFill()
+                .frame(height: 160)
+                .clipped()
+                .blur(radius: 20)
+                .overlay(Color.black.opacity(0.2))
+        } else {
+            LinearGradient(colors: contact.posterGradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+
+    private func groupTag(_ group: CNGroup) -> some View {
+        HStack(spacing: 4) {
+            Text(group.name)
+                .font(.caption)
+            Button {
+                viewModel.setMembership(false, contactIDs: [contact.identifier], group: group)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color.accentColor.opacity(0.15))
+        .foregroundStyle(Color.accentColor)
+        .clipShape(Capsule())
+    }
+
+    private func addGroupTag(_ remainingGroups: [CNGroup]) -> some View {
+        Menu {
+            ForEach(remainingGroups, id: \.identifier) { group in
+                Button(group.name) {
+                    viewModel.setMembership(true, contactIDs: [contact.identifier], group: group)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "plus")
+                Text("Add")
+            }
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.secondary.opacity(0.15))
+            .clipShape(Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
     }
 
     @ViewBuilder
@@ -179,7 +224,13 @@ struct ContactDetailView: View {
         mutable.organizationName = organizationName
         mutable.jobTitle = jobTitle
         viewModel.saveContact(mutable)
-        isEditing = false
+    }
+
+    private var isDirty: Bool {
+        givenName != contact.givenName
+            || familyName != contact.familyName
+            || organizationName != contact.organizationName
+            || jobTitle != contact.jobTitle
     }
 }
 

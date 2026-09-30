@@ -7,7 +7,7 @@ struct ContactRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            avatar
+            ContactAvatarView(contact: contact, size: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(contact.displayName)
                     .font(.body)
@@ -22,33 +22,9 @@ struct ContactRowView: View {
     }
 
     private var subtitle: String? {
-        if !contact.organizationName.isEmpty { return contact.organizationName }
-        return contact.primaryEmail ?? contact.primaryPhone
-    }
-
-    @ViewBuilder
-    private var avatar: some View {
-        if contact.imageDataAvailable,
-           let data = contact.thumbnailImageData,
-           let nsImage = NSImage(data: data) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-        } else {
-            ZStack {
-                Circle().fill(Color.secondary.opacity(0.25))
-                if contact.isCompany {
-                    Image(systemName: "building.2.fill")
-                        .font(.caption)
-                } else {
-                    Text(contact.initials)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                }
-            }
-            .frame(width: 32, height: 32)
+        if !contact.organizationName.isEmpty, contact.organizationName != contact.displayName {
+            return contact.organizationName
         }
+        return contact.primaryEmail ?? contact.primaryPhone
     }
 }

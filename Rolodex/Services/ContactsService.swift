@@ -18,6 +18,7 @@ final class ContactsService {
         CNContactTypeKey as CNKeyDescriptor,
         CNContactImageDataAvailableKey as CNKeyDescriptor,
         CNContactThumbnailImageDataKey as CNKeyDescriptor,
+        CNContactImageDataKey as CNKeyDescriptor,
     ]
 
     func requestAccess() async -> Bool {

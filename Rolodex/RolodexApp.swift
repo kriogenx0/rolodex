@@ -10,6 +10,8 @@ struct RolodexApp: App {
                 .environmentObject(viewModel)
                 .frame(minWidth: 920, minHeight: 600)
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(replacing: .newItem) { }
         }

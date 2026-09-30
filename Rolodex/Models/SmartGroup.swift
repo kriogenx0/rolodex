@@ -54,3 +54,26 @@ struct SmartGroup: Codable, Identifiable, Hashable {
     var rules: [SmartGroupRule] = []
     var isHiddenFromAllContacts: Bool = false
 }
+
+extension SmartGroup {
+    static let builtInPeopleID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    static let builtInCompaniesID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+
+    static let builtInPeople = SmartGroup(
+        id: builtInPeopleID,
+        name: "People",
+        rules: [SmartGroupRule(field: .contactType, op: .equals, value: "Person")]
+    )
+
+    static let builtInCompanies = SmartGroup(
+        id: builtInCompaniesID,
+        name: "Companies",
+        rules: [SmartGroupRule(field: .contactType, op: .equals, value: "Company")]
+    )
+
+    static let builtIns: [SmartGroup] = [builtInPeople, builtInCompanies]
+
+    var isBuiltIn: Bool {
+        id == SmartGroup.builtInPeopleID || id == SmartGroup.builtInCompaniesID
+    }
+}

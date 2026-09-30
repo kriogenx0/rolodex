@@ -80,6 +80,10 @@ final class ContactsViewModel: ObservableObject {
         Dictionary(uniqueKeysWithValues: contacts.map { ($0.identifier, $0) })
     }
 
+    func smartGroup(withID id: UUID) -> SmartGroup? {
+        SmartGroup.builtIns.first { $0.id == id } ?? smartGroups.first { $0.id == id }
+    }
+
     var visibleContacts: [CNContact] {
         var base: [CNContact]
         switch selection {
@@ -94,7 +98,7 @@ final class ContactsViewModel: ObservableObject {
         case .group(let identifier):
             base = contacts.filter { membership[$0.identifier]?.contains(identifier) == true }
         case .smartGroup(let id):
-            guard let smartGroup = smartGroups.first(where: { $0.id == id }) else { return [] }
+            guard let smartGroup = smartGroup(withID: id) else { return [] }
             base = evaluate(smartGroup: smartGroup)
         case .insights:
             base = []

@@ -1,5 +1,6 @@
 import Contacts
 import Foundation
+import SwiftUI
 
 extension CNContact {
     var displayName: String {
@@ -34,6 +35,14 @@ extension CNContact {
 
     var typeLabel: String {
         isCompany ? "Company" : "Person"
+    }
+
+    var posterGradient: [Color] {
+        let hue = Double(abs(identifier.hashValue) % 360) / 360.0
+        return [
+            Color(hue: hue, saturation: 0.55, brightness: 0.78),
+            Color(hue: hue, saturation: 0.65, brightness: 0.52),
+        ]
     }
 
     func matches(field: RuleField, operator op: RuleOperator, value: String, groupIdentifiers: Set<String>) -> Bool {

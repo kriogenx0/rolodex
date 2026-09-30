@@ -6,13 +6,20 @@ struct ContactListView: View {
     @State private var isPresentingNewContact = false
 
     var body: some View {
-        List(selection: $viewModel.selectedContactIDs) {
-            ForEach(viewModel.visibleContacts, id: \.identifier) { contact in
-                ContactRowView(contact: contact)
-                    .tag(contact.identifier)
+        VStack(spacing: 0) {
+            filterBar
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+            List(selection: $viewModel.selectedContactIDs) {
+                ForEach(viewModel.visibleContacts, id: \.identifier) { contact in
+                    ContactRowView(contact: contact)
+                        .tag(contact.identifier)
+                        .draggable(dragPayload(for: contact))
+                }
             }
         }
-        .searchable(text: $viewModel.searchText, placement: .toolbar, prompt: "Search")
         .navigationTitle(title)
         .toolbar {
             ToolbarItemGroup {
@@ -23,10 +30,12 @@ struct ContactListView: View {
                 } label: {
                     Label("New Contact", systemImage: "person.crop.circle.badge.plus")
                 }
-                Button(role: .destructive) {
-                    viewModel.deleteSelectedContacts()
+                Menu {
+                    Button("Delete", role: .destructive) {
+                        viewModel.deleteSelectedContacts()
+                    }
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label("More", systemImage: "ellipsis.circle")
                 }
                 .disabled(viewModel.selectedContactIDs.isEmpty)
             }
@@ -45,6 +54,52 @@ struct ContactListView: View {
         }
     }
 
+    @ViewBuilder
+    private var filterBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FlowLayout(spacing: 6) {
+                filterChip("All", isSelected: viewModel.selection == .allContacts) {
+                    viewModel.selection = .allContacts
+                }
+                filterChip(SmartGroup.builtInPeople.name, isSelected: viewModel.selection == .smartGroup(SmartGroup.builtInPeopleID)) {
+                    viewModel.selection = .smartGroup(SmartGroup.builtInPeopleID)
+                }
+                filterChip(SmartGroup.builtInCompanies.name, isSelected: viewModel.selection == .smartGroup(SmartGroup.builtInCompaniesID)) {
+                    viewModel.selection = .smartGroup(SmartGroup.builtInCompaniesID)
+                }
+                ForEach(viewModel.smartGroups) { smartGroup in
+                    filterChip(smartGroup.name, isSelected: viewModel.selection == .smartGroup(smartGroup.id)) {
+                        viewModel.selection = .smartGroup(smartGroup.id)
+                    }
+                }
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search", text: $viewModel.searchText)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.secondary.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private func filterChip(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.15))
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
     private var title: String {
         switch viewModel.selection {
         case .allContacts:
@@ -52,9 +107,16 @@ struct ContactListView: View {
         case .group(let id):
             return viewModel.groups.first { $0.identifier == id }?.name ?? "Group"
         case .smartGroup(let id):
-            return viewModel.smartGroups.first { $0.id == id }?.name ?? "Smart Group"
+            return viewModel.smartGroup(withID: id)?.name ?? "Smart Group"
         case .insights:
             return "Insights"
         }
+    }
+
+    private func dragPayload(for contact: CNContact) -> String {
+        if viewModel.selectedContactIDs.contains(contact.identifier), viewModel.selectedContactIDs.count > 1 {
+            return viewModel.selectedContactIDs.joined(separator: "\n")
+        }
+        return contact.identifier
     }
 }

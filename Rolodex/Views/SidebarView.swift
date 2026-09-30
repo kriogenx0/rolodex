@@ -7,6 +7,7 @@ struct SidebarView: View {
     @State private var newSmartGroup: SmartGroup?
     @State private var groupPendingRename: CNGroup?
     @State private var renameSheetPresented = false
+    @State private var dropTargetedGroupIdentifier: String?
 
     var body: some View {
         List(selection: selectionBinding) {
@@ -37,6 +38,10 @@ struct SidebarView: View {
             }
 
             Section {
+                smartGroupRow(SmartGroup.builtInPeople, isBuiltIn: true)
+                    .tag(SidebarSelection.smartGroup(SmartGroup.builtInPeople.id))
+                smartGroupRow(SmartGroup.builtInCompanies, isBuiltIn: true)
+                    .tag(SidebarSelection.smartGroup(SmartGroup.builtInCompanies.id))
                 ForEach(viewModel.smartGroups) { smartGroup in
                     smartGroupRow(smartGroup)
                         .tag(SidebarSelection.smartGroup(smartGroup.id))
@@ -45,28 +50,12 @@ struct SidebarView: View {
                 HStack {
                     Text("Smart Groups")
                     Spacer()
-                    Menu {
-                        Button("People") {
-                            newSmartGroup = SmartGroup(
-                                name: "People",
-                                rules: [SmartGroupRule(field: .contactType, op: .equals, value: "Person")]
-                            )
-                        }
-                        Button("Companies") {
-                            newSmartGroup = SmartGroup(
-                                name: "Companies",
-                                rules: [SmartGroupRule(field: .contactType, op: .equals, value: "Company")]
-                            )
-                        }
-                        Divider()
-                        Button("Custom…") {
-                            newSmartGroup = SmartGroup(name: "New Smart Group")
-                        }
+                    Button {
+                        newSmartGroup = SmartGroup(name: "New Smart Group")
                     } label: {
                         Image(systemName: "plus.circle")
                     }
                     .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
                 }
             }
         }
@@ -103,6 +92,15 @@ struct SidebarView: View {
         Label(group.name, systemImage: "folder.fill")
             .badge(count)
             .opacity(viewModel.isGroupHidden(group.identifier) ? 0.5 : 1)
+            .listRowBackground(dropTargetedGroupIdentifier == group.identifier ? Color.accentColor.opacity(0.2) : nil)
+            .dropDestination(for: String.self) { items, _ in
+                let ids = Set(items.flatMap { $0.split(separator: "\n").map(String.init) })
+                guard !ids.isEmpty else { return false }
+                viewModel.setMembership(true, contactIDs: ids, group: group)
+                return true
+            } isTargeted: { targeted in
+                dropTargetedGroupIdentifier = targeted ? group.identifier : nil
+            }
             .contextMenu {
                 Button(viewModel.isGroupHidden(group.identifier) ? "Show in All Contacts" : "Hide from All Contacts") {
                     viewModel.toggleGroupHidden(group.identifier)
@@ -128,11 +126,13 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private func smartGroupRow(_ smartGroup: SmartGroup) -> some View {
+    private func smartGroupRow(_ smartGroup: SmartGroup, isBuiltIn: Bool = false) -> some View {
         let count = viewModel.evaluate(smartGroup: smartGroup).count
-        Label(smartGroup.name, systemImage: "wand.and.stars")
-            .badge(count)
-            .contextMenu {
+        let label = Label(smartGroup.name, systemImage: "wand.and.stars").badge(count)
+        if isBuiltIn {
+            label
+        } else {
+            label.contextMenu {
                 Button("Edit…") {
                     newSmartGroup = smartGroup
                 }
@@ -141,5 +141,6 @@ struct SidebarView: View {
                     viewModel.deleteSmartGroup(smartGroup)
                 }
             }
+        }
     }
 }
