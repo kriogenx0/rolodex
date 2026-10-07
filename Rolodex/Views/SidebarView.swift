@@ -88,7 +88,7 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func groupRow(_ group: CNGroup) -> some View {
-        let count = viewModel.contacts.filter { viewModel.membership[$0.identifier]?.contains(group.identifier) == true }.count
+        let count = viewModel.membersByGroup[group.identifier]?.count ?? 0
         Label(group.name, systemImage: "folder.fill")
             .badge(count)
             .opacity(viewModel.isGroupHidden(group.identifier) ? 0.5 : 1)

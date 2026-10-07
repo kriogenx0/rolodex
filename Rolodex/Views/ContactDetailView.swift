@@ -11,6 +11,7 @@ struct ContactDetailView: View {
     @State private var organizationName = ""
     @State private var jobTitle = ""
     @State private var vCardURL: URL?
+    @State private var imageData: Data?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,12 +19,19 @@ struct ContactDetailView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
 
+            HStack(spacing: 8) {
+                TextField("", text: $givenName, prompt: Text("First Name"))
+                    .accessibilityLabel("First Name")
+                TextField("", text: $familyName, prompt: Text("Last Name"))
+                    .accessibilityLabel("Last Name")
+            }
+            .labelsHidden()
+            .textFieldStyle(.roundedBorder)
+            .padding(.horizontal)
+            .padding(.top, 8)
+
             Form {
-            Section("Name") {
-                HStack {
-                    TextField("First Name", text: $givenName)
-                    TextField("Last Name", text: $familyName)
-                }
+            Section {
                 TextField("Company", text: $organizationName)
                 TextField("Job Title", text: $jobTitle)
             }
@@ -43,6 +51,22 @@ struct ContactDetailView: View {
                 }
                 ForEach(Array(contact.emailAddresses.enumerated()), id: \.offset) { _, labeled in
                     LabeledContent(CNLabeledValue<NSString>.localizedString(forLabel: labeled.label ?? ""), value: labeled.value as String)
+                        .modifier(ContactFieldCopy(value: labeled.value as String, fieldName: "email address"))
+                }
+            }
+
+            Section("Address") {
+                if contact.postalAddresses.isEmpty {
+                    Text("No postal addresses").foregroundStyle(.secondary)
+                }
+                ForEach(Array(contact.postalAddresses.enumerated()), id: \.offset) { _, labeled in
+                    let address = CNPostalAddressFormatter.string(from: labeled.value, style: .mailingAddress)
+                    LabeledContent(CNLabeledValue<CNPostalAddress>.localizedString(forLabel: labeled.label ?? "")) {
+                        Text(address)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .modifier(ContactFieldCopy(value: address, fieldName: "postal address"))
                 }
             }
 
@@ -91,11 +115,20 @@ struct ContactDetailView: View {
         }
         .onAppear {
             loadFields()
-            vCardURL = makeVCardURL()
         }
         .onChange(of: contact.identifier) { _, _ in
             loadFields()
-            vCardURL = makeVCardURL()
+        }
+        .task(id: contact) {
+            vCardURL = nil
+            imageData = nil
+            let service = ContactsService.shared
+            async let photo = try? service.fetchImageData(identifier: contact.identifier)
+            async let card = try? service.exportVCardURL(identifier: contact.identifier, name: contact.displayName)
+            let (loadedPhoto, loadedCard) = await (photo, card)
+            guard !Task.isCancelled else { return }
+            imageData = loadedPhoto
+            vCardURL = loadedCard
         }
     }
 
@@ -114,7 +147,7 @@ struct ContactDetailView: View {
     @ViewBuilder
     private var headerBackground: some View {
         if contact.imageDataAvailable,
-           let data = contact.imageData ?? contact.thumbnailImageData,
+           let data = imageData ?? contact.thumbnailImageData,
            let nsImage = NSImage(data: data) {
             Image(nsImage: nsImage)
                 .resizable()
@@ -190,24 +223,13 @@ struct ContactDetailView: View {
             .buttonStyle(.plain)
             .help("Text")
         }
+        .modifier(ContactFieldCopy(value: labeled.value.stringValue, fieldName: "phone number"))
     }
 
     private func open(scheme: String, number: String) {
         let digits = number.filter { $0.isNumber || $0 == "+" }
         guard let url = URL(string: "\(scheme):\(digits)") else { return }
         NSWorkspace.shared.open(url)
-    }
-
-    private func makeVCardURL() -> URL? {
-        guard let data = try? CNContactVCardSerialization.data(with: [contact]) else { return nil }
-        let fileName = contact.displayName.replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName).vcf")
-        do {
-            try data.write(to: url, options: .atomic)
-            return url
-        } catch {
-            return nil
-        }
     }
 
     private func loadFields() {
@@ -231,6 +253,33 @@ struct ContactDetailView: View {
             || familyName != contact.familyName
             || organizationName != contact.organizationName
             || jobTitle != contact.jobTitle
+    }
+}
+
+private struct ContactFieldCopy: ViewModifier {
+    let value: String
+    let fieldName: String
+
+    @State private var isHovered = false
+    @FocusState private var isCopyFocused: Bool
+
+    func body(content: Content) -> some View {
+        HStack(spacing: 8) {
+            content
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(value, forType: .string)
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .buttonStyle(.plain)
+            .focused($isCopyFocused)
+            .help("Copy \(fieldName)")
+            .accessibilityLabel("Copy \(fieldName)")
+            .opacity(isHovered || isCopyFocused ? 1 : 0)
+        }
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 }
 

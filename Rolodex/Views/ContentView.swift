@@ -33,12 +33,16 @@ struct ContentView: View {
     private var mainSplitView: some View {
         NavigationSplitView {
             SidebarView()
+                .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 400)
         } content: {
-            if viewModel.selection == .insights {
-                GroupInsightsView()
-            } else {
-                ContactListView()
+            Group {
+                if viewModel.selection == .insights {
+                    GroupInsightsView()
+                } else {
+                    ContactListView()
+                }
             }
+            .navigationSplitViewColumnWidth(min: 280, ideal: 360, max: 520)
         } detail: {
             detailContent
         }

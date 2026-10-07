@@ -104,10 +104,17 @@ uninstall: close
 ## make uninstall, make install.
 reinstall: uninstall install
 
-## Run unit tests. Passes (no-op) until a test target/scheme exists.
+## Run contact-loading regression tests, plus any Xcode test target.
 test:
+	@mkdir -p "$(BUILD_DIR)/Tests"
+	@xcrun swiftc -parse-as-library \
+		Rolodex/Models/SmartGroup.swift Rolodex/Extensions/CNContact+Rolodex.swift \
+		Rolodex/Persistence/AppDataStore.swift Rolodex/Services/ContactsService.swift \
+		Rolodex/ViewModels/ContactsViewModel.swift Tests/ContactsPerformanceTests.swift \
+		-o "$(BUILD_DIR)/Tests/ContactsPerformanceTests"
+	@"$(BUILD_DIR)/Tests/ContactsPerformanceTests"
 	@if ! xcodebuild -list -project $(PROJECT) 2>/dev/null | grep -q "Tests"; then \
-		echo "No test target configured yet in $(PROJECT) - skipping (treated as pass)."; \
+		echo "No additional Xcode test target configured."; \
 	else \
 		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination 'platform=macOS' test; \
 	fi

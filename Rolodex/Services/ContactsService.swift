@@ -1,25 +1,78 @@
 import Contacts
 import Foundation
 
-@MainActor
-final class ContactsService {
+struct ContactsSnapshot {
+    let contacts: [CNContact]
+    let groups: [CNGroup]
+    let membership: [String: Set<String>]
+    let contactsByID: [String: CNContact]
+    let membersByGroup: [String: Set<String>]
+    let searchTextByID: [String: [String]]
+
+    init(contacts: [CNContact], groups: [CNGroup], membership: [String: Set<String>]) {
+        // Format each name once, rather than on every sorting comparison.
+        let namedContacts = contacts.map { ($0, $0.displayName) }
+        self.contacts = namedContacts.sorted {
+            $0.1.localizedCaseInsensitiveCompare($1.1) == .orderedAscending
+        }.map { $0.0 }
+        self.groups = groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        self.membership = membership
+        contactsByID = Dictionary(uniqueKeysWithValues: contacts.map { ($0.identifier, $0) })
+        searchTextByID = Dictionary(uniqueKeysWithValues: namedContacts.map { contact, name in
+            (contact.identifier, [name, contact.primaryEmail ?? "", contact.primaryPhone ?? "", contact.organizationName]
+                .map { $0.lowercased() })
+        })
+        var members: [String: Set<String>] = [:]
+        for contact in contacts {
+            for groupID in membership[contact.identifier] ?? [] {
+                members[groupID, default: []].insert(contact.identifier)
+            }
+        }
+        membersByGroup = members
+    }
+}
+
+// Serialize Contacts I/O away from the main actor, including writes.
+actor ContactsService {
     static let shared = ContactsService()
 
-    let store = CNContactStore()
+    private let store = CNContactStore()
 
     static let keysToFetch: [CNKeyDescriptor] = [
         CNContactIdentifierKey as CNKeyDescriptor,
         CNContactGivenNameKey as CNKeyDescriptor,
         CNContactFamilyNameKey as CNKeyDescriptor,
+        CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
         CNContactOrganizationNameKey as CNKeyDescriptor,
         CNContactJobTitleKey as CNKeyDescriptor,
         CNContactEmailAddressesKey as CNKeyDescriptor,
         CNContactPhoneNumbersKey as CNKeyDescriptor,
+        CNContactPostalAddressesKey as CNKeyDescriptor,
         CNContactTypeKey as CNKeyDescriptor,
         CNContactImageDataAvailableKey as CNKeyDescriptor,
         CNContactThumbnailImageDataKey as CNKeyDescriptor,
-        CNContactImageDataKey as CNKeyDescriptor,
     ]
+
+    func fetchSnapshot() throws -> ContactsSnapshot {
+        let groups = try fetchGroups()
+        return try ContactsSnapshot(
+            contacts: fetchAllContacts(), groups: groups,
+            membership: fetchMembership(for: groups)
+        )
+    }
+
+    func fetchImageData(identifier: String) throws -> Data? {
+        try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactImageDataKey as CNKeyDescriptor]).imageData
+    }
+
+    func exportVCardURL(identifier: String, name: String) throws -> URL {
+        let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactVCardSerialization.descriptorForRequiredKeys()])
+        let data = try CNContactVCardSerialization.data(with: [contact])
+        let fileName = name.replacingOccurrences(of: "/", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName).vcf")
+        try data.write(to: url, options: .atomic)
+        return url
+    }
 
     func requestAccess() async -> Bool {
         let status = CNContactStore.authorizationStatus(for: .contacts)
@@ -41,7 +94,8 @@ final class ContactsService {
     func fetchAllContacts() throws -> [CNContact] {
         var results: [CNContact] = []
         let request = CNContactFetchRequest(keysToFetch: Self.keysToFetch)
-        request.sortOrder = .userDefault
+        // The snapshot sorts by display name, so don't also sort in the store.
+        request.sortOrder = .none
         try store.enumerateContacts(with: request) { contact, _ in
             results.append(contact)
         }

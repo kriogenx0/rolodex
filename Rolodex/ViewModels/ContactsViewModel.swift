@@ -24,11 +24,22 @@ final class ContactsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    private(set) var contactsByID: [String: CNContact] = [:]
+    private(set) var membersByGroup: [String: Set<String>] = [:]
+    private var searchTextByID: [String: [String]] = [:]
+    private var refreshRequested = false
+    private var scheduledRefresh: Task<Void, Never>?
+    private var didStart = false
+    private let loadSnapshot: @MainActor () async throws -> ContactsSnapshot
+
     private let contactsService = ContactsService.shared
     private let dataStore = AppDataStore.shared
     private var notificationObserver: NSObjectProtocol?
 
-    init() {
+    init(loadSnapshot: (@MainActor () async throws -> ContactsSnapshot)? = nil) {
+        self.loadSnapshot = loadSnapshot ?? {
+            try await ContactsService.shared.fetchSnapshot()
+        }
         smartGroups = dataStore.data.smartGroups
         hiddenGroupIdentifiers = dataStore.data.hiddenGroupIdentifiers
         blockedContactIdentifiers = dataStore.data.blockedContactIdentifiers
@@ -38,7 +49,7 @@ final class ContactsViewModel: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                await self?.refreshAll()
+                self?.scheduleRefresh()
             }
         }
     }
@@ -50,35 +61,49 @@ final class ContactsViewModel: ObservableObject {
     }
 
     func start() async {
+        guard !didStart else { return }
+        didStart = true
         let granted = await contactsService.requestAccess()
         authorizationDenied = !granted
         guard granted else { return }
         await refreshAll()
     }
 
-    func refreshAll() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let fetchedGroups = try contactsService.fetchGroups()
-            let fetchedContacts = try contactsService.fetchAllContacts()
-            let fetchedMembership = try contactsService.fetchMembership(for: fetchedGroups)
-            groups = fetchedGroups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-            contacts = fetchedContacts.sorted {
-                $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
-            }
-            membership = fetchedMembership
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
+    private func scheduleRefresh() {
+        scheduledRefresh?.cancel()
+        scheduledRefresh = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(300)) }
+            catch { return }
+            guard let self else { return }
+            await self.refreshAll()
         }
     }
 
-    // MARK: - Derived data
-
-    var contactsByID: [String: CNContact] {
-        Dictionary(uniqueKeysWithValues: contacts.map { ($0.identifier, $0) })
+    func refreshAll() async {
+        guard !isLoading else {
+            refreshRequested = true
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        repeat {
+            refreshRequested = false
+            do {
+                let snapshot = try await loadSnapshot()
+                contactsByID = snapshot.contactsByID
+                membersByGroup = snapshot.membersByGroup
+                searchTextByID = snapshot.searchTextByID
+                membership = snapshot.membership
+                groups = snapshot.groups
+                contacts = snapshot.contacts
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        } while refreshRequested
     }
+
+    // MARK: - Derived data
 
     func smartGroup(withID id: UUID) -> SmartGroup? {
         SmartGroup.builtIns.first { $0.id == id } ?? smartGroups.first { $0.id == id }
@@ -106,12 +131,7 @@ final class ContactsViewModel: ObservableObject {
 
         guard !searchText.isEmpty else { return base }
         let needle = searchText.lowercased()
-        return base.filter { contact in
-            contact.displayName.lowercased().contains(needle)
-                || (contact.primaryEmail?.lowercased().contains(needle) ?? false)
-                || (contact.primaryPhone?.lowercased().contains(needle) ?? false)
-                || contact.organizationName.lowercased().contains(needle)
-        }
+        return base.filter { searchTextByID[$0.identifier]?.contains(where: { $0.contains(needle) }) == true }
     }
 
     func evaluate(smartGroup: SmartGroup) -> [CNContact] {
@@ -156,45 +176,44 @@ final class ContactsViewModel: ObservableObject {
         dataStore.update { $0.blockedContactIdentifiers = self.blockedContactIdentifiers }
     }
 
+    private func performChange(_ operation: @escaping (ContactsService) async throws -> Void) {
+        Task {
+            do {
+                try await operation(contactsService)
+                scheduleRefresh()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func createGroup(named name: String) {
-        do {
-            try contactsService.createGroup(named: name)
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
+        performChange { service in
+            try await service.createGroup(named: name)
         }
     }
 
     func rename(group: CNGroup, to newName: String) {
-        do {
-            try contactsService.rename(group: group, to: newName)
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
+        performChange { service in
+            try await service.rename(group: group, to: newName)
         }
     }
 
     func delete(group: CNGroup) {
-        do {
-            try contactsService.delete(group: group)
-            if selection == .group(group.identifier) {
-                selection = .allContacts
+        performChange { service in
+            try await service.delete(group: group)
+            if self.selection == .group(group.identifier) {
+                self.selection = .allContacts
             }
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 
     func merge(source: CNGroup, into destination: CNGroup) {
-        do {
-            try contactsService.mergeGroup(source, into: destination)
-            if selection == .group(source.identifier) {
-                selection = .group(destination.identifier)
+        performChange { service in
+            try await service.mergeGroup(source, into: destination)
+            if self.selection == .group(source.identifier) {
+                self.selection = .group(destination.identifier)
             }
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 
@@ -209,45 +228,34 @@ final class ContactsViewModel: ObservableObject {
     func setMembership(_ isMember: Bool, contactIDs: Set<String>, group: CNGroup) {
         let targetContacts = contactIDs.compactMap { contactsByID[$0] }
         guard !targetContacts.isEmpty else { return }
-        do {
+        performChange { service in
             if isMember {
-                try contactsService.addContacts(targetContacts, to: group)
+                try await service.addContacts(targetContacts, to: group)
             } else {
-                try contactsService.removeContacts(targetContacts, from: group)
+                try await service.removeContacts(targetContacts, from: group)
             }
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 
     func deleteSelectedContacts() {
-        let targets = selectedContactIDs.compactMap { contactsByID[$0] }
+        let targetIDs = selectedContactIDs
+        let targets = targetIDs.compactMap { contactsByID[$0] }
         guard !targets.isEmpty else { return }
-        do {
-            try contactsService.delete(targets)
-            selectedContactIDs.removeAll()
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
+        performChange { service in
+            try await service.delete(targets)
+            self.selectedContactIDs.subtract(targetIDs)
         }
     }
 
     func saveContact(_ mutable: CNMutableContact) {
-        do {
-            try contactsService.update(mutable)
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
+        performChange { service in
+            try await service.update(mutable)
         }
     }
 
     func createContact(_ mutable: CNMutableContact, groups: [CNGroup]) {
-        do {
-            try contactsService.createContact(mutable, in: groups)
-            Task { await refreshAll() }
-        } catch {
-            errorMessage = error.localizedDescription
+        performChange { service in
+            try await service.createContact(mutable, in: groups)
         }
     }
 
@@ -291,7 +299,7 @@ final class ContactsViewModel: ObservableObject {
 
     var groupStats: [GroupStat] {
         groups.map { group in
-            let count = contacts.filter { membership[$0.identifier]?.contains(group.identifier) == true }.count
+            let count = membersByGroup[group.identifier]?.count ?? 0
             return GroupStat(identifier: group.identifier, name: group.name, count: count)
         }
         .sorted { $0.count > $1.count }
@@ -299,7 +307,7 @@ final class ContactsViewModel: ObservableObject {
 
     var emptyGroups: [CNGroup] {
         groups.filter { group in
-            !contacts.contains { membership[$0.identifier]?.contains(group.identifier) == true }
+            (membersByGroup[group.identifier] ?? []).isEmpty
         }
     }
 
@@ -313,8 +321,8 @@ final class ContactsViewModel: ObservableObject {
             for j in (i + 1)..<groups.count {
                 let a = groups[i]
                 let b = groups[j]
-                let membersA = Set(contacts.filter { membership[$0.identifier]?.contains(a.identifier) == true }.map(\.identifier))
-                let membersB = Set(contacts.filter { membership[$0.identifier]?.contains(b.identifier) == true }.map(\.identifier))
+                let membersA = membersByGroup[a.identifier] ?? []
+                let membersB = membersByGroup[b.identifier] ?? []
                 guard !membersA.isEmpty, !membersB.isEmpty else { continue }
                 let overlap = membersA.intersection(membersB)
                 guard !overlap.isEmpty else { continue }
