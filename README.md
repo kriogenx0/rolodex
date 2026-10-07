@@ -33,6 +33,11 @@ Contacts framework has no API for them), so those are stored locally in
 
 ## Notes on scope
 
+The app version and build number are defined in `VERSION` at the
+repository root. Edit `MARKETING_VERSION` (for example, `1.1`) and
+`CURRENT_PROJECT_VERSION` (for example, `2`) there. Both Debug and Release
+builds use these values for the app's `Info.plist`.
+
 - **Notes field**: contact notes are intentionally not read/edited. Apple
   restricts `CNContactNoteKey` to apps with a special, Apple-granted
   entitlement — without it, simply including that key in a fetch throws at

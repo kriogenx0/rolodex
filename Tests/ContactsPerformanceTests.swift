@@ -27,6 +27,7 @@ private actor SnapshotLoader {
 struct ContactsPerformanceTests {
     @MainActor
     static func main() async throws {
+        try await testBackgroundQueue()
         // Synthetic fixtures only; these tests never read or write the contact store.
         let alice = CNMutableContact()
         alice.givenName = "Alice"
@@ -94,6 +95,45 @@ struct ContactsPerformanceTests {
         await model.refreshAll()
         precondition(model.errorMessage == nil)
 
-        print("Passed: snapshot indexes, filtering, insights, refresh coalescing, and error recovery.")
+        print("Passed: background queue responsiveness, snapshot indexes, filtering, insights, refresh coalescing, and error recovery.")
+    }
+
+    @MainActor
+    private static func testBackgroundQueue() async throws {
+        let worker = ContactsIOQueue()
+        let started = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        let queued = DispatchSemaphore(value: 0)
+        let blockedWork = Task {
+            try await worker.run {
+                started.signal()
+                let released = release.wait(timeout: .now() + 2) == .success
+                return (!Thread.isMainThread, released)
+            }
+        }
+        // Wait asynchronously for the worker to enter a blocking operation.
+        while !consumeSignal(started) { await Task.yield() }
+        worker.enqueue { queued.signal() }
+        precondition(!consumeSignal(queued), "The worker must serialize operations")
+        // Only UI/main-actor work can release the worker. A UI-blocking
+        // implementation would time out before reaching this line.
+        release.signal()
+        let (ranInBackground, wasReleased) = try await blockedWork.value
+        precondition(ranInBackground && wasReleased, "Contacts work must leave the UI responsive")
+        let drained = try await worker.run { queued.wait(timeout: .now()) == .success }
+        precondition(drained)
+        do {
+            let _: Void = try await worker.run { throw NSError(domain: "QueueTest", code: 42) }
+            preconditionFailure("Queue must propagate errors")
+        } catch {
+            precondition((error as NSError).code == 42)
+        }
+        let recovered = try await worker.run { !Thread.isMainThread }
+        precondition(recovered, "Worker must remain usable after a failed operation")
+    }
+
+    private static func consumeSignal(_ semaphore: DispatchSemaphore) -> Bool {
+        // A zero timeout only polls; it never blocks the calling thread.
+        semaphore.wait(timeout: .now()) == .success
     }
 }

@@ -32,11 +32,38 @@ struct ContactsSnapshot {
     }
 }
 
-// Serialize Contacts I/O away from the main actor, including writes.
-actor ContactsService {
+// A serial queue keeps blocking Contacts calls off both the UI thread and
+// Swift's cooperative executor. Every store access goes through this queue.
+final class ContactsIOQueue: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.rolodex.contacts-io", qos: .userInitiated)
+
+    func enqueue(_ operation: @escaping () -> Void) {
+        queue.async {
+            dispatchPrecondition(condition: .notOnQueue(.main))
+            autoreleasepool(invoking: operation)
+        }
+    }
+
+    func run<T>(_ operation: @escaping () throws -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            enqueue {
+                do {
+                    let value = try operation()
+                    continuation.resume(returning: value)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+}
+
+// The mutable store is confined to ioQueue, including its lazy initialization.
+final class ContactsService: @unchecked Sendable {
     static let shared = ContactsService()
 
-    private let store = CNContactStore()
+    private let ioQueue = ContactsIOQueue()
+    private lazy var store = CNContactStore()
 
     static let keysToFetch: [CNKeyDescriptor] = [
         CNContactIdentifierKey as CNKeyDescriptor,
@@ -53,45 +80,53 @@ actor ContactsService {
         CNContactThumbnailImageDataKey as CNKeyDescriptor,
     ]
 
-    func fetchSnapshot() throws -> ContactsSnapshot {
-        let groups = try fetchGroups()
-        return try ContactsSnapshot(
-            contacts: fetchAllContacts(), groups: groups,
-            membership: fetchMembership(for: groups)
-        )
-    }
-
-    func fetchImageData(identifier: String) throws -> Data? {
-        try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactImageDataKey as CNKeyDescriptor]).imageData
-    }
-
-    func exportVCardURL(identifier: String, name: String) throws -> URL {
-        let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactVCardSerialization.descriptorForRequiredKeys()])
-        let data = try CNContactVCardSerialization.data(with: [contact])
-        let fileName = name.replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName).vcf")
-        try data.write(to: url, options: .atomic)
-        return url
-    }
-
-    func requestAccess() async -> Bool {
-        let status = CNContactStore.authorizationStatus(for: .contacts)
-        print("Rolodex: Contacts TCC status at startup = \(status)")
-        switch status {
-        case .authorized, .limited:
-            return true
-        case .notDetermined:
-            return await withCheckedContinuation { continuation in
-                store.requestAccess(for: .contacts) { granted, _ in
-                    continuation.resume(returning: granted)
-                }
-            }
-        default:
-            return false
+    func fetchSnapshot() async throws -> ContactsSnapshot {
+        try await ioQueue.run { [self] in
+            let groups = try fetchGroups()
+            return try ContactsSnapshot(
+                contacts: fetchAllContacts(), groups: groups,
+                membership: fetchMembership(for: groups)
+            )
         }
     }
 
-    func fetchAllContacts() throws -> [CNContact] {
+    func fetchImageData(identifier: String) async throws -> Data? {
+        try await ioQueue.run { [self] in
+            try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactImageDataKey as CNKeyDescriptor]).imageData
+        }
+    }
+
+    func exportVCardURL(identifier: String, name: String) async throws -> URL {
+        try await ioQueue.run { [self] in
+            let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: [CNContactVCardSerialization.descriptorForRequiredKeys()])
+            let data = try CNContactVCardSerialization.data(with: [contact])
+            let fileName = name.replacingOccurrences(of: "/", with: "-")
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName).vcf")
+            try data.write(to: url, options: .atomic)
+            return url
+        }
+    }
+
+    func requestAccess() async -> Bool {
+        await withCheckedContinuation { continuation in
+            ioQueue.enqueue { [self] in
+                let status = CNContactStore.authorizationStatus(for: .contacts)
+                print("Rolodex: Contacts TCC status at startup = \(status)")
+                switch status {
+                case .authorized, .limited:
+                    continuation.resume(returning: true)
+                case .notDetermined:
+                    store.requestAccess(for: .contacts) { granted, _ in
+                        continuation.resume(returning: granted)
+                    }
+                default:
+                    continuation.resume(returning: false)
+                }
+            }
+        }
+    }
+
+    private func fetchAllContacts() throws -> [CNContact] {
         var results: [CNContact] = []
         let request = CNContactFetchRequest(keysToFetch: Self.keysToFetch)
         // The snapshot sorts by display name, so don't also sort in the store.
@@ -102,11 +137,11 @@ actor ContactsService {
         return results
     }
 
-    func fetchGroups() throws -> [CNGroup] {
+    private func fetchGroups() throws -> [CNGroup] {
         try store.groups(matching: nil)
     }
 
-    func fetchMembership(for groups: [CNGroup]) throws -> [String: Set<String>] {
+    private func fetchMembership(for groups: [CNGroup]) throws -> [String: Set<String>] {
         var membership: [String: Set<String>] = [:]
         for group in groups {
             let predicate = CNContact.predicateForContactsInGroup(withIdentifier: group.identifier)
@@ -121,86 +156,104 @@ actor ContactsService {
     // MARK: - Groups
 
     @discardableResult
-    func createGroup(named name: String) throws -> CNGroup {
-        let newGroup = CNMutableGroup()
-        newGroup.name = name
-        let request = CNSaveRequest()
-        request.add(newGroup, toContainerWithIdentifier: nil)
-        try store.execute(request)
-        return newGroup
-    }
-
-    func rename(group: CNGroup, to newName: String) throws {
-        guard let mutable = group.mutableCopy() as? CNMutableGroup else { return }
-        mutable.name = newName
-        let request = CNSaveRequest()
-        request.update(mutable)
-        try store.execute(request)
-    }
-
-    func delete(group: CNGroup) throws {
-        guard let mutable = group.mutableCopy() as? CNMutableGroup else { return }
-        let request = CNSaveRequest()
-        request.delete(mutable)
-        try store.execute(request)
-    }
-
-    func addContacts(_ contacts: [CNContact], to group: CNGroup) throws {
-        let request = CNSaveRequest()
-        for contact in contacts {
-            request.addMember(contact, to: group)
+    func createGroup(named name: String) async throws -> CNGroup {
+        try await ioQueue.run { [self] in
+            let newGroup = CNMutableGroup()
+            newGroup.name = name
+            let request = CNSaveRequest()
+            request.add(newGroup, toContainerWithIdentifier: nil)
+            try store.execute(request)
+            return newGroup
         }
-        try store.execute(request)
     }
 
-    func removeContacts(_ contacts: [CNContact], from group: CNGroup) throws {
-        let request = CNSaveRequest()
-        for contact in contacts {
-            request.removeMember(contact, from: group)
+    func rename(group: CNGroup, to newName: String) async throws {
+        try await ioQueue.run { [self] in
+            guard let mutable = group.mutableCopy() as? CNMutableGroup else { return }
+            mutable.name = newName
+            let request = CNSaveRequest()
+            request.update(mutable)
+            try store.execute(request)
         }
-        try store.execute(request)
     }
 
-    func mergeGroup(_ source: CNGroup, into destination: CNGroup) throws {
-        let predicate = CNContact.predicateForContactsInGroup(withIdentifier: source.identifier)
-        let members = try store.unifiedContacts(matching: predicate, keysToFetch: [CNContactIdentifierKey as CNKeyDescriptor])
+    func delete(group: CNGroup) async throws {
+        try await ioQueue.run { [self] in
+            guard let mutable = group.mutableCopy() as? CNMutableGroup else { return }
+            let request = CNSaveRequest()
+            request.delete(mutable)
+            try store.execute(request)
+        }
+    }
 
-        let request = CNSaveRequest()
-        for member in members {
-            request.addMember(member, to: destination)
+    func addContacts(_ contacts: [CNContact], to group: CNGroup) async throws {
+        try await ioQueue.run { [self] in
+            let request = CNSaveRequest()
+            for contact in contacts {
+                request.addMember(contact, to: group)
+            }
+            try store.execute(request)
         }
-        if let mutableSource = source.mutableCopy() as? CNMutableGroup {
-            request.delete(mutableSource)
+    }
+
+    func removeContacts(_ contacts: [CNContact], from group: CNGroup) async throws {
+        try await ioQueue.run { [self] in
+            let request = CNSaveRequest()
+            for contact in contacts {
+                request.removeMember(contact, from: group)
+            }
+            try store.execute(request)
         }
-        try store.execute(request)
+    }
+
+    func mergeGroup(_ source: CNGroup, into destination: CNGroup) async throws {
+        try await ioQueue.run { [self] in
+            let predicate = CNContact.predicateForContactsInGroup(withIdentifier: source.identifier)
+            let members = try store.unifiedContacts(matching: predicate, keysToFetch: [CNContactIdentifierKey as CNKeyDescriptor])
+
+            let request = CNSaveRequest()
+            for member in members {
+                request.addMember(member, to: destination)
+            }
+            if let mutableSource = source.mutableCopy() as? CNMutableGroup {
+                request.delete(mutableSource)
+            }
+            try store.execute(request)
+        }
     }
 
     // MARK: - Contacts
 
     @discardableResult
-    func createContact(_ contact: CNMutableContact, in groups: [CNGroup]) throws -> CNContact {
-        let request = CNSaveRequest()
-        request.add(contact, toContainerWithIdentifier: nil)
-        for group in groups {
-            request.addMember(contact, to: group)
-        }
-        try store.execute(request)
-        return contact
-    }
-
-    func update(_ contact: CNMutableContact) throws {
-        let request = CNSaveRequest()
-        request.update(contact)
-        try store.execute(request)
-    }
-
-    func delete(_ contacts: [CNContact]) throws {
-        let request = CNSaveRequest()
-        for contact in contacts {
-            if let mutable = contact.mutableCopy() as? CNMutableContact {
-                request.delete(mutable)
+    func createContact(_ contact: CNMutableContact, in groups: [CNGroup]) async throws -> CNContact {
+        try await ioQueue.run { [self] in
+            let request = CNSaveRequest()
+            request.add(contact, toContainerWithIdentifier: nil)
+            for group in groups {
+                request.addMember(contact, to: group)
             }
+            try store.execute(request)
+            return contact
         }
-        try store.execute(request)
+    }
+
+    func update(_ contact: CNMutableContact) async throws {
+        try await ioQueue.run { [self] in
+            let request = CNSaveRequest()
+            request.update(contact)
+            try store.execute(request)
+        }
+    }
+
+    func delete(_ contacts: [CNContact]) async throws {
+        try await ioQueue.run { [self] in
+            let request = CNSaveRequest()
+            for contact in contacts {
+                if let mutable = contact.mutableCopy() as? CNMutableContact {
+                    request.delete(mutable)
+                }
+            }
+            try store.execute(request)
+        }
     }
 }
