@@ -14,81 +14,49 @@ struct ContactDetailView: View {
     @State private var imageData: Data?
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal)
-                .padding(.top, 8)
+        ScrollView {
+            VStack(spacing: 20) {
+                header
+                actionBar
 
-            HStack(spacing: 8) {
-                TextField("", text: $givenName, prompt: Text("First Name"))
-                    .accessibilityLabel("First Name")
-                TextField("", text: $familyName, prompt: Text("Last Name"))
-                    .accessibilityLabel("Last Name")
-            }
-            .labelsHidden()
-            .textFieldStyle(.roundedBorder)
-            .padding(.horizontal)
-            .padding(.top, 8)
-
-            Form {
-            Section {
-                TextField("Company", text: $organizationName)
-                TextField("Job Title", text: $jobTitle)
-            }
-
-            Section("Phone") {
-                if contact.phoneNumbers.isEmpty {
-                    Text("No phone numbers").foregroundStyle(.secondary)
-                }
-                ForEach(Array(contact.phoneNumbers.enumerated()), id: \.offset) { _, labeled in
-                    phoneRow(labeled)
-                }
-            }
-
-            Section("Email") {
-                if contact.emailAddresses.isEmpty {
-                    Text("No email addresses").foregroundStyle(.secondary)
-                }
-                ForEach(Array(contact.emailAddresses.enumerated()), id: \.offset) { _, labeled in
-                    LabeledContent(CNLabeledValue<NSString>.localizedString(forLabel: labeled.label ?? ""), value: labeled.value as String)
-                        .modifier(ContactFieldCopy(value: labeled.value as String, fieldName: "email address"))
-                }
-            }
-
-            Section("Address") {
-                if contact.postalAddresses.isEmpty {
-                    Text("No postal addresses").foregroundStyle(.secondary)
-                }
-                ForEach(Array(contact.postalAddresses.enumerated()), id: \.offset) { _, labeled in
-                    let address = CNPostalAddressFormatter.string(from: labeled.value, style: .mailingAddress)
-                    LabeledContent(CNLabeledValue<CNPostalAddress>.localizedString(forLabel: labeled.label ?? "")) {
-                        Text(address)
-                            .multilineTextAlignment(.trailing)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .modifier(ContactFieldCopy(value: address, fieldName: "postal address"))
-                }
-            }
-
-            Section("Groups") {
-                let memberGroups = viewModel.groups.filter { viewModel.membership[contact.identifier]?.contains($0.identifier) == true }
-                let remainingGroups = viewModel.groups.filter { !(viewModel.membership[contact.identifier]?.contains($0.identifier) ?? false) }
-                if memberGroups.isEmpty && remainingGroups.isEmpty {
-                    Text("No groups available").foregroundStyle(.secondary)
-                } else {
-                    FlowLayout(spacing: 6) {
-                        ForEach(memberGroups, id: \.identifier) { group in
-                            groupTag(group)
-                        }
-                        if !remainingGroups.isEmpty {
-                            addGroupTag(remainingGroups)
+                if !contact.phoneNumbers.isEmpty {
+                    card {
+                        ForEach(Array(contact.phoneNumbers.enumerated()), id: \.offset) { index, labeled in
+                            if index > 0 { Divider() }
+                            phoneRow(labeled)
                         }
                     }
                 }
+
+                if !contact.emailAddresses.isEmpty {
+                    card {
+                        ForEach(Array(contact.emailAddresses.enumerated()), id: \.offset) { index, labeled in
+                            if index > 0 { Divider() }
+                            fieldRow(label: CNLabeledValue<NSString>.localizedString(forLabel: labeled.label ?? ""),
+                                     value: labeled.value as String, fieldName: "email address")
+                        }
+                    }
+                }
+
+                if !contact.postalAddresses.isEmpty {
+                    card {
+                        ForEach(Array(contact.postalAddresses.enumerated()), id: \.offset) { index, labeled in
+                            if index > 0 { Divider() }
+                            fieldRow(label: CNLabeledValue<CNPostalAddress>.localizedString(forLabel: labeled.label ?? ""),
+                                     value: CNPostalAddressFormatter.string(from: labeled.value, style: .mailingAddress),
+                                     fieldName: "postal address")
+                        }
+                    }
+                }
+
+                groupsCard
             }
-            }
-            .formStyle(.grouped)
+            .frame(maxWidth: 520)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(contact.displayName)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -132,32 +100,148 @@ struct ContactDetailView: View {
         }
     }
 
-    @ViewBuilder
+    // MARK: - Header
+
     private var header: some View {
-        ZStack {
-            headerBackground
-            ContactAvatarView(contact: contact, size: 96)
-                .overlay(Circle().strokeBorder(.white, lineWidth: 3))
-                .shadow(radius: 6)
+        VStack(spacing: 6) {
+            avatar
+                .padding(.bottom, 6)
+
+            HStack(spacing: 6) {
+                TextField("", text: $givenName, prompt: Text("First Name"))
+                    .accessibilityLabel("First Name")
+                    .multilineTextAlignment(.trailing)
+                TextField("", text: $familyName, prompt: Text("Last Name"))
+                    .accessibilityLabel("Last Name")
+                    .multilineTextAlignment(.leading)
+            }
+            .font(.system(size: 26, weight: .semibold))
+
+            VStack(spacing: 2) {
+                TextField("", text: $jobTitle, prompt: Text("Job Title"))
+                    .accessibilityLabel("Job Title")
+                TextField("", text: $organizationName, prompt: Text("Company"))
+                    .accessibilityLabel("Company")
+            }
+            .font(.title3)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
         }
-        .frame(height: 160)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .textFieldStyle(.plain)
+        .labelsHidden()
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
-    private var headerBackground: some View {
+    private var avatar: some View {
+        let size: CGFloat = 120
         if contact.imageDataAvailable,
            let data = imageData ?? contact.thumbnailImageData,
            let nsImage = NSImage(data: data) {
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFill()
-                .frame(height: 160)
-                .clipped()
-                .blur(radius: 20)
-                .overlay(Color.black.opacity(0.2))
+                .frame(width: size, height: size)
+                .clipShape(Circle())
         } else {
-            LinearGradient(colors: contact.posterGradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+            ZStack {
+                Circle().fill(LinearGradient(colors: contact.posterGradient, startPoint: .top, endPoint: .bottom))
+                if contact.isCompany {
+                    Image(systemName: "building.2.fill")
+                        .font(.system(size: size * 0.4))
+                } else {
+                    Text(contact.initials)
+                        .font(.system(size: size * 0.4, weight: .medium))
+                }
+            }
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+        }
+    }
+
+    private var actionBar: some View {
+        HStack(spacing: 10) {
+            actionButton("Message", systemImage: "message.fill", enabled: contact.primaryPhone != nil) {
+                if let phone = contact.primaryPhone { open(scheme: "sms", target: phone) }
+            }
+            actionButton("Call", systemImage: "phone.fill", enabled: contact.primaryPhone != nil) {
+                if let phone = contact.primaryPhone { open(scheme: "tel", target: phone) }
+            }
+            actionButton("Video", systemImage: "video.fill", enabled: contact.primaryPhone != nil || contact.primaryEmail != nil) {
+                if let target = contact.primaryPhone ?? contact.primaryEmail { open(scheme: "facetime", target: target) }
+            }
+            actionButton("Mail", systemImage: "envelope.fill", enabled: contact.primaryEmail != nil) {
+                if let email = contact.primaryEmail { open(scheme: "mailto", target: email) }
+            }
+        }
+    }
+
+    private func actionButton(_ title: String, systemImage: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16))
+                Text(title)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(enabled ? Color.accentColor : Color.secondary.opacity(0.6))
+        .disabled(!enabled)
+    }
+
+    // MARK: - Cards
+
+    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func fieldRow(label: String, value: String, fieldName: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .modifier(ContactFieldCopy(value: value, fieldName: fieldName))
+    }
+
+    private var groupsCard: some View {
+        let memberGroups = viewModel.groups.filter { viewModel.membership[contact.identifier]?.contains($0.identifier) == true }
+        let remainingGroups = viewModel.groups.filter { !(viewModel.membership[contact.identifier]?.contains($0.identifier) ?? false) }
+        return card {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Groups")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if memberGroups.isEmpty && remainingGroups.isEmpty {
+                    Text("No groups available").foregroundStyle(.secondary)
+                } else {
+                    FlowLayout(spacing: 6) {
+                        ForEach(memberGroups, id: \.identifier) { group in
+                            groupTag(group)
+                        }
+                        if !remainingGroups.isEmpty {
+                            addGroupTag(remainingGroups)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
         }
     }
 
@@ -202,33 +286,43 @@ struct ContactDetailView: View {
         .fixedSize()
     }
 
-    @ViewBuilder
     private func phoneRow(_ labeled: CNLabeledValue<CNPhoneNumber>) -> some View {
-        HStack {
-            LabeledContent(CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: labeled.label ?? ""), value: labeled.value.stringValue)
+        let number = labeled.value.stringValue
+        return HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: labeled.label ?? ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(number)
+                    .textSelection(.enabled)
+            }
             Spacer()
             Button {
-                open(scheme: "tel", number: labeled.value.stringValue)
-            } label: {
-                Image(systemName: "phone.fill")
-            }
-            .buttonStyle(.plain)
-            .help("Call")
-
-            Button {
-                open(scheme: "sms", number: labeled.value.stringValue)
+                open(scheme: "sms", target: number)
             } label: {
                 Image(systemName: "message.fill")
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
             .help("Text")
+
+            Button {
+                open(scheme: "tel", target: number)
+            } label: {
+                Image(systemName: "phone.fill")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            .help("Call")
         }
-        .modifier(ContactFieldCopy(value: labeled.value.stringValue, fieldName: "phone number"))
+        .padding(.vertical, 8)
+        .modifier(ContactFieldCopy(value: number, fieldName: "phone number"))
     }
 
-    private func open(scheme: String, number: String) {
-        let digits = number.filter { $0.isNumber || $0 == "+" }
-        guard let url = URL(string: "\(scheme):\(digits)") else { return }
+    private func open(scheme: String, target: String) {
+        let cleaned = scheme == "mailto" ? target : target.filter { $0.isNumber || $0 == "+" }
+        let encoded = cleaned.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? cleaned
+        guard let url = URL(string: "\(scheme):\(encoded)") else { return }
         NSWorkspace.shared.open(url)
     }
 
